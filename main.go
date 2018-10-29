@@ -71,7 +71,7 @@ func main() {
 			ctra.Find(bson.M{"_id": bson.M{"$gt": bson.ObjectIdHex(w.PreviousSeenID)}}).All(&result)
 			w.TriggerCounter += int64(len(result))
 			if w.TriggerCounter >= w.TriggerValue {
-				fmt.Println(w)
+				fmt.Println(w.URL)
 				ids := make([]string, len(result))
 				for i, tracks := range result {
 					ids[i] = tracks.ID.Hex()
@@ -80,23 +80,15 @@ func main() {
 				format := struct {
 					Text string `json:"text"`
 				}{
-					fmt.Sprintf("The latest track has timestamp: %d, the last added tracks are: %v. This took %fseconds to process.",
+					fmt.Sprintf("The latest track has timestamp: %d, the last added tracks are: %v. This took %f seconds to process.",
 						latest,
 						ids,
 						time.Since(starttime).Seconds()),
 				}
-				fmt.Println(fmt.Sprintf("%+v", format))
 				body := new(bytes.Buffer)
-				_ = json.NewEncoder(body).Encode(format)
-				req, _ := http.NewRequest("POST", w.URL, body)
-				req.Header.Set("Content-Type", "application/json")
-				fmt.Println(req)
-				client := &http.Client{}
-				resp, err := client.Do(req)
-				fmt.Println(resp)
-				if resp.Body != nil {
-					defer resp.Body.Close()
-				}
+				json.NewEncoder(body).Encode(format)
+				client := http.Client{}
+				client.Post(w.URL, "application/json", body)
 				if err != nil {
 					log.Fatal("Could not post webhook: ", err)
 				}
